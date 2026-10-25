@@ -77,6 +77,7 @@ h1{font-size:26px}h2{font-size:19px;margin-bottom:4px}
 </head>
 <body>
 <div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 /* ================= MARCA ================= */
 const BRAND={name:'Souza Labs',logo:'logo.png'};
@@ -486,7 +487,7 @@ function tPerfil(u){const xpL=u.xp%500;
  <h2 style="margin-top:24px">🔐 Contas cadastradas</h2>
  <p class="muted">Todas as pessoas com login na plataforma (visão exclusiva do professor): Gmail e senha para gestão escolar.</p>
  <div class="card" style="margin-top:10px;overflow-x:auto"><table class="tbl"><tr><th>ID</th><th>Nome</th><th>Papel</th><th>E-mail</th><th>Senha</th><th>Ações</th></tr>
- ${db.users.map(x=>`<tr><td>${x.id}</td><td>${displayName(x)}</td><td>${x.role==='professor'?'<span class="badge b-purple">professor</span>':'<span class="badge b-gray">aluno</span>'}</td><td>${x.email}</td><td>${ui.reveal[x.id]?`<code>${x.pass}</code>`:'••••••••'}</td><td><div class="row"><button class="btn ghost sm" onclick="toggleReveal('${x.id}')">${ui.reveal[x.id]?'ocultar':'ver'}</button><button class="btn ghost sm" onclick="openReset('${x.id}')">redefinir</button></div></td></tr>`).join('')}</table></div>
+ ${db.users.map(x=>`<tr><td>${x.id}</td><td>${displayName(x)}</td><td>${x.role==='professor'?'<span class="badge b-purple">professor</span>':'<span class="badge b-gray">aluno</span>'}</td><td>${x.email}</td><td>${ui.reveal[x.id]?`<code>gerenciada pelo Supabase</code>`:'••••••••'}</td><td><div class="row"><button class="btn ghost sm" onclick="toggleReveal('${x.id}')">${ui.reveal[x.id]?'ocultar':'ver'}</button><button class="btn ghost sm" onclick="openReset('${x.id}')">redefinir</button></div></td></tr>`).join('')}</table></div>
  <p class="tiny" style="margin-top:8px">⚠️ Protótipo de pesquisa: os dados ficam somente neste navegador.</p>`}
 function teacherHTML(u){const pages={visao:tVisao,estudantes:tEstudantes,jornada:tJornada,ranking:tRanking,rel:tRel,gestao:tGestao,loja:()=>shopHTML(u),conquistas:()=>conqHTML(u),perfil:tPerfil};
  const nav=[['visao','📊','Visão geral'],['estudantes','👥','Estudantes'],['jornada','🧭','Jornada'],['ranking','🏆','Ranking'],['rel','📈','Relatórios'],['gestao','🎁','Gestão'],['loja','🛒','Loja'],['conquistas','🎖️','Conquistas'],['perfil','👤','Perfil']];
@@ -556,6 +557,87 @@ function render(){document.querySelectorAll('.overlay').forEach(e=>e.remove());a
  app.innerHTML=u.role==='aluno'?studentHTML(u):teacherHTML(u);
  if(ui.modal)document.body.insertAdjacentHTML('beforeend',modalHTML())}
 render();
+</script>
+<script>
+/* ===== SUPABASE: login e dados na nuvem (substitui o localStorage) ===== */
+const SB_URL='https://nmgccyabulcpqzxpgebm.supabase.co',SB_KEY='sb_publishable__xI0v5trkIktgr8tfoJFFw_Hto_vWfw';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+const COL={users:'id',classes:'code',missions:'id',responses:'id',shopItems:'id',achv:'id'};
+let authUid=null,snap={},saveT=null;
+function emptyDB(){Object.assign(db,{users:[],classes:[],missions:[],responses:[],shopItems:[],achv:[]});snap={}}
+session=null;localStorage.removeItem(SES_KEY);emptyDB();
+async function pull(){
+ let all=[],from=0;
+ for(;;){const{data,error}=await sb.from('records').select('kind,id,data').order('kind').order('id').range(from,from+999);
+  if(error){toast('⚠️ Sem conexão com o banco.');return false}
+  all=all.concat(data);if(data.length<1000)break;from+=1000}
+ const n={users:[],classes:[],missions:[],responses:[],shopItems:[],achv:[]};snap={};
+ all.forEach(function(r){if(n[r.kind]){n[r.kind].push(r.data);snap[r.kind+'|'+r.id]=JSON.stringify(r.data)}});
+ Object.assign(db,n);return true}
+async function push(){
+ const ups=[],dels=[];
+ for(const k in COL){const f=COL[k],seen={};
+  db[k].forEach(function(x){const id=x[f];seen[id]=1;if(snap[k+'|'+id]!==JSON.stringify(x))ups.push({kind:k,id:id,data:x})});
+  Object.keys(snap).forEach(function(key){if(key.indexOf(k+'|')===0&&!seen[key.slice(k.length+1)])dels.push(key)})}
+ if(ups.length){const{error}=await sb.from('records').upsert(ups);if(error){toast('⚠️ Não salvou: '+error.message);return}
+  ups.forEach(function(r){snap[r.kind+'|'+r.id]=JSON.stringify(r.data)})}
+ for(const key of dels){const i=key.indexOf('|');
+  const{error}=await sb.from('records').delete().eq('kind',key.slice(0,i)).eq('id',key.slice(i+1));
+  if(error)toast('⚠️ Não apagou: '+error.message);else delete snap[key]}}
+function save(){clearTimeout(saveT);saveT=setTimeout(function(){saveT=null;push()},300)}
+async function enter(user){
+ authUid=user.id;if(!(await pull()))return;
+ let u=db.users.find(function(x){return x.uid===authUid});
+ if(!u){const m=user.user_metadata||{},role=(user.app_metadata||{}).role==='professor'?'professor':'aluno',p=role==='aluno'?'AL-':'PR-';
+  for(let i=0;i<5&&!u;i++){
+   const n=Math.max(0,...db.users.filter(function(x){return x.id.indexOf(p)===0}).map(function(x){return +x.id.slice(-4)}))+1,id=p+'2026-'+String(n).padStart(4,'0');
+   const row={id:id,uid:authUid,name:m.name||user.email,email:user.email,role:role,xp:0,coins:0,classCode:null,inventory:[],achievements:[],equipped:{},createdAt:new Date().toISOString(),enrolledAt:null};
+   const{error}=await sb.from('records').insert({kind:'users',id:id,data:row});
+   if(error){await pull()}else{u=row;db.users.push(row);snap['users|'+id]=JSON.stringify(row)}}
+  if(!u){toast('⚠️ Não foi possível criar seu perfil.');return}
+  if(role==='professor'){db.classes.push({code:genClassCode(),name:m.cname||('Turma de '+u.name),year:2026,subject:'',teacherId:u.id});save()}}
+ session=u.id}
+async function doLogin(){
+ const e=document.getElementById('l_email').value.trim().toLowerCase(),p=document.getElementById('l_pass').value;
+ const{data,error}=await sb.auth.signInWithPassword({email:e,password:p});
+ if(error){ui.authError=/confirm/i.test(error.message)?'Confirme seu e-mail antes de entrar.':'E-mail ou senha incorretos.';return render()}
+ await enter(data.user);ui.selClass=null;ui.authError='';render()}
+async function doRegister(){
+ const name=document.getElementById('f_name').value.trim(),email=document.getElementById('f_email').value.trim().toLowerCase(),pass=document.getElementById('f_pass').value,code=document.getElementById('f_tcode').value.trim().toUpperCase(),cname=document.getElementById('f_classname').value.trim();
+ if(name.length<3)return setErr('Informe seu nome completo.');
+ if(!email.includes('@'))return setErr('Informe um e-mail válido (Gmail).');
+ if(pass.length<8)return setErr('A senha precisa de pelo menos 8 caracteres.');
+ if(code&&!db.teacherCodes.includes(code))return setErr('Código de professor inválido. Deixe em branco para criar conta de aluno.');
+ const{data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{name:name,tcode:code,cname:cname}}});
+ if(error)return setErr(/registered|exists/i.test(error.message)?'Este e-mail já possui conta. Use "Entrar".':error.message);
+ if(!data.session)return setErr('Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre.');
+ await enter(data.user);toast('Conta criada! Seu ID: '+me().id);render()}
+async function logout(){await sb.auth.signOut();session=null;authUid=null;emptyDB();render()}
+async function submitChPass(){
+ const u=me(),cur=document.getElementById('c_cur').value,n1=document.getElementById('c_new').value,n2=document.getElementById('c_new2').value;
+ if(n1.length<8)return toast('A nova senha precisa de pelo menos 8 caracteres.');
+ if(n1!==n2)return toast('As senhas não coincidem.');
+ const v=await sb.auth.signInWithPassword({email:u.email,password:cur});if(v.error)return toast('Senha atual incorreta.');
+ const r=await sb.auth.updateUser({password:n1});if(r.error)return toast('⚠️ '+r.error.message);
+ ui.modal=null;toast('🔑 Senha alterada com sucesso.');render()}
+async function forgotNext(){
+ const e=document.getElementById('fg_email').value.trim().toLowerCase();
+ const r=await sb.auth.resetPasswordForEmail(e,{redirectTo:location.origin});
+ if(r.error)return toast('⚠️ '+r.error.message);
+ ui.modal=null;toast('📧 Se o e-mail existir, enviamos um link para criar a nova senha.');render()}
+async function submitReset(){
+ const x=db.users.find(function(y){return y.id===ui.modal.uid});if(!x)return;
+ const r=await sb.auth.resetPasswordForEmail(x.email,{redirectTo:location.origin});
+ ui.modal=null;toast(r.error?'⚠️ '+r.error.message:'📧 Link de nova senha enviado para '+x.email);render()}
+function resetDemo(){toast('Os dados agora ficam no Supabase.')}
+sb.auth.onAuthStateChange(function(ev){if(ev==='PASSWORD_RECOVERY'){setTimeout(function(){
+ const p=prompt('Digite sua nova senha (mínimo 8 caracteres):');
+ if(p&&p.length>=8)sb.auth.updateUser({password:p}).then(function(r){toast(r.error?'⚠️ '+r.error.message:'🔑 Senha redefinida!')});
+ else if(p)toast('A senha precisa de pelo menos 8 caracteres.')},300)}});
+async function refresh(){if(!authUid||saveT||ui.modal)return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;if(await pull())render()}
+document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});setInterval(refresh,30000);
+render();
+sb.auth.getSession().then(async function(r){const s=r.data.session;if(s){await enter(s.user);render()}});
 </script>
 </body>
 </html>
