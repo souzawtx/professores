@@ -376,7 +376,7 @@ function sJornada(u){const cls=classOf(u);if(!cls)return emptyHTML('🧭','Nenhu
  ${ms.length?ms.map(m=>{const st=statusOf(u,m);const badge=st==='done'?'<span class="badge b-green">Concluída</span>':st==='pending'?'<span class="badge b-amber">Aguardando confirmação</span>':st==='retry'?'<span class="badge b-red">Tente novamente</span>':'<span class="badge b-purple">Disponível</span>';
  return`<div class="card" style="margin-top:14px"><div class="spread"><div class="row">${m.img?`<img src="${m.img}" class="thumb">`:''}<div><b>${m.title}</b><p class="muted">📖 ${m.book}${m.author?' · '+m.author:''}</p></div></div>${badge}</div>
  <div class="row" style="margin-top:10px"><span class="badge b-gray">${skillName(m.skill)}</span><span class="tiny">Prazo: ${fmtDate(m.deadline)}</span><span class="tiny">+${m.xp} XP · +${m.coins} 🪙</span></div>
- ${st!=='done'&&st!=='pending'?`<button class="btn sm" style="margin-top:12px" onclick="openAnswer('${m.id}')">${st==='retry'?'Refazer missão':'Responder missão'}</button>`:''}</div>`}).join(''):emptyHTML('🧭','Sua jornada está sendo preparada','As missões aparecerão aqui quando o professor publicar.')}
+ ${st!=='done'&&st!=='pending'?`<button class="btn sm" style="margin-top:12px" onclick="openAnswer('${m.id}')">${st==='retry'?'Refazer missão':'Responder missão'}</button>`:''}${st==='done'?`<button class="btn ghost sm" style="margin-top:12px" onclick="openPractice('${m.id}')">🔁 Praticar de novo (sem XP)</button>`:''}</div>`}).join(''):emptyHTML('🧭','Sua jornada está sendo preparada','As missões aparecerão aqui quando o professor publicar.')}
  <h2 style="margin-top:22px">📖 Diário de leitura</h2>
  ${books.length?`<div class="card" style="margin-top:10px">${books.map(b=>`<p style="padding:6px 0">✅ ${b}</p>`).join('')}</div>`:`<p class="muted" style="margin-top:6px">Nenhum livro concluído ainda.</p>`}`}
 function rankRow(s,i,myId){const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span class="badge b-gray">${i+1}</span>`;
@@ -413,8 +413,10 @@ function sPerfil(u){const cls=classOf(u);const xpL=u.xp%500;const av=eqVal(u,'av
  <div style="margin-top:18px;display:grid;gap:10px">
  <button class="btn ghost" onclick="navS('ranking')">Ver ranking da turma</button>
  <button class="btn ghost" onclick="navS('loja')">Abrir loja · ${u.coins} moedas</button>
+ ${u.classCode?`<button class="btn ghost" style="color:#b3261e" onclick="openLeaveClass()">Sair da turma</button>`:''}
  <button class="btn ghost" onclick="openChPass()">Alterar senha</button>
- <button class="btn ghost" style="color:#b3261e" onclick="logout()">Sair da conta</button></div></div>`}
+ <button class="btn ghost" style="color:#b3261e" onclick="logout()">Sair da conta</button>
+ <button class="btn ghost" style="color:#b3261e" onclick="openDelAcc()">Excluir minha conta</button></div></div>`}
 function studentHTML(u){const pages={inicio:()=>sInicio(u),jornada:()=>sJornada(u),ranking:()=>sRanking(u),loja:()=>shopHTML(u),conquistas:()=>conqHTML(u),perfil:()=>sPerfil(u)};
  const nav=[['inicio','🏠','Início'],['jornada','🧭','Jornada'],['ranking','🏆','Ranking'],['loja','🛒','Loja'],['conquistas','🎖️','Conquistas'],['perfil','👤','Perfil']];
  return shellHTML(nav,ui.sPage,'navS',u,`<div class="page">${pages[ui.sPage]()}</div>`)}
@@ -499,7 +501,8 @@ function tPerfil(u){const xpL=u.xp%500;
  <button class="btn ghost" onclick="navT('estudantes')">Ver minhas turmas e estudantes</button>
  <button class="btn ghost" onclick="navT('loja')">Abrir loja · ${u.coins} moedas</button>
  <button class="btn ghost" onclick="openChPass()">Alterar senha</button>
- <button class="btn ghost" style="color:#b3261e" onclick="logout()">Sair da conta</button></div></div>
+ <button class="btn ghost" style="color:#b3261e" onclick="logout()">Sair da conta</button>
+ <button class="btn ghost" style="color:#b3261e" onclick="openDelAcc()">Excluir minha conta</button></div></div>
  <h2 style="margin-top:24px">🔐 Contas cadastradas</h2>
  <p class="muted">Todas as pessoas com login na plataforma (visão exclusiva do professor): Gmail e senha para gestão escolar.</p>
  <div class="card" style="margin-top:10px;overflow-x:auto"><table class="tbl"><tr><th>ID</th><th>Nome</th><th>Papel</th><th>E-mail</th><th>Senha</th><th>Ações</th></tr>
@@ -553,11 +556,11 @@ function modalHTML(){const m=ui.modal;
  <p class="tiny" style="margin-top:12px">É assim que o estudante verá o desafio: imagem → enunciado → alternativas.</p></div></div>`}
  if(m.type==='answer'){return`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
  <div class="spread"><h2>${miss.title}</h2><button class="btn ghost sm" onclick="closeModal()">fechar</button></div>
- <p class="muted">📖 ${miss.book}${miss.author?' · '+miss.author:''}</p><span class="badge b-purple" style="margin-top:8px">${skillName(miss.skill)}</span>
+ <p class="muted">📖 ${miss.book}${miss.author?' · '+miss.author:''}</p><span class="badge b-purple" style="margin-top:8px">${skillName(miss.skill)}</span>${m.practice?'<p class="tiny" style="margin-top:10px;padding:8px 10px;background:#fff7e0;border-radius:8px">🔁 Modo treino: repita quantas vezes quiser. Não vale XP nem moedas e não vai para o professor.</p>':''}
  ${miss.img?`<div class="mimg-wrap"><img src="${miss.img}" class="mimg" onclick="openZoom(this.src)" alt="Imagem da missão"></div><p class="tiny" style="margin-top:6px;text-align:center">🔍 Clique na imagem para ampliar e ler os detalhes</p>`:''}
  <div class="cpage" data-i="0" style="display:block"><p style="margin-top:14px;font-weight:600">${miss.q}</p>
  ${miss.type==='multipla'?miss.opts.map((o,i)=>`<label class="opt"><input type="radio" name="opt" value="${i}"> ${o}</label>`).join(''):`<label>Sua resposta (cite evidências do texto)</label><textarea id="w_ans" placeholder="Escreva sua interpretação citando trechos do livro..."></textarea>`}
- </div>${chapPages(miss)}<button id="sendBtn" class="btn" style="margin-top:16px${(miss.chapters||[]).length?';display:none':''}" onclick="submitAnswer('${miss.id}')">Enviar respostas</button></div></div>`}
+ </div>${chapPages(miss)}<button id="sendBtn" class="btn" style="margin-top:16px${(miss.chapters||[]).length?';display:none':''}" onclick="submitAnswer('${miss.id}')">${m.practice?'Conferir respostas (treino)':'Enviar respostas'}</button></div></div>`}
  if(m.type==='conc'){const rs=db.responses.filter(r=>r.missionId===miss.id);
  return`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
  <div class="spread"><div class="row">${miss.img?`<img src="${miss.img}" class="thumb" style="width:44px;height:44px" onclick="openZoom('${miss.img}')">`:''}<h2>Conclusões · ${miss.title}</h2></div><button class="btn ghost sm" onclick="closeModal()">fechar</button></div>
@@ -659,6 +662,7 @@ const escC=function(s){return String(s).replace(/[&<>"]/g,function(c){return{'&'
 function chapHTML(n){return '<div class="card chap" style="margin-top:12px"><div class="spread"><b class="chn">Capítulo '+n+'</b><button type="button" class="btn ghost sm" onclick="this.closest(\'.chap\').remove();renumChaps()">remover</button></div>'
  +'<label>Tipo de resposta</label><select class="c_type" onchange="this.closest(\'.chap\').querySelector(\'.c_opts\').style.display=this.value===\'multipla\'?\'block\':\'none\'"><option value="multipla">Múltipla escolha</option><option value="escrita">Resposta escrita</option></select>'
  +'<label>Enunciado</label><textarea class="c_q" placeholder="Pergunta deste capítulo..."></textarea>'
+ +'<label>Imagem do capítulo (opcional)</label><input type="file" class="c_img" accept="image/png,image/jpeg,image/webp,image/gif" onchange="chapImg(this)"><div class="c_prev"></div>'
  +'<div class="c_opts"><label>Alternativas</label>'+[0,1,2,3].map(function(i){return '<input class="c_o" style="margin-top:6px" placeholder="Alternativa '+(i+1)+'">'}).join('')+'<label>Correta (nº)</label><select class="c_correct"><option value="0">1</option><option value="1">2</option><option value="2">3</option><option value="3">4</option></select></div></div>'}
 function addChapter(){const b=document.getElementById('chapBox');b.insertAdjacentHTML('beforeend',chapHTML(b.children.length+2))}
 function renumChaps(){document.querySelectorAll('#chapBox .chn').forEach(function(e,i){e.textContent='Capítulo '+(i+2)})}
@@ -669,13 +673,13 @@ publishMission=function(){const chaps=[],bl=document.querySelectorAll('#chapBox 
   let opts=[],correct=0;
   if(t==='multipla'){opts=[].map.call(b.querySelectorAll('.c_o'),function(i){return i.value.trim()});
    if(opts.some(function(o){return !o})){toast('Preencha as 4 alternativas do capítulo '+(k+2)+'.');return}correct=+b.querySelector('.c_correct').value}
-  chaps.push({type:t,q:q,opts:opts,correct:correct})}
+  chaps.push({type:t,q:q,opts:opts,correct:correct,img:b.querySelector('.c_img').dataset.url||''})}
  const before=new Set(db.missions.map(function(m){return m.id}));_pub();
  if(chaps.length){db.missions.forEach(function(m){if(!before.has(m.id))m.chapters=chaps});save()}};
 let cpi=0;
 function openAnswer(mid){cpi=0;ui.modal={type:'answer',mid:mid};render()}
 function chapPages(m){const cs=m.chapters||[];if(!cs.length)return '';
- return cs.map(function(c,k){const i=k+1;return '<div class="cpage" data-i="'+i+'" style="display:none"><p style="margin-top:14px;font-weight:600">'+escC(c.q)+'</p>'
+ return cs.map(function(c,k){const i=k+1;return '<div class="cpage" data-i="'+i+'" style="display:none">'+(c.img?'<div class="mimg-wrap"><img src="'+escC(c.img)+'" class="mimg" onclick="openZoom(this.src)"></div><p class="tiny" style="margin-top:6px;text-align:center">🔍 Clique na imagem para ampliar</p>':'')+'<p style="margin-top:14px;font-weight:600">'+escC(c.q)+'</p>'
   +(c.type==='multipla'?c.opts.map(function(o,j){return '<label class="opt"><input type="radio" name="opt'+i+'" value="'+j+'"> '+escC(o)+'</label>'}).join(''):'<label>Sua resposta</label><textarea class="c_ans" data-i="'+i+'" placeholder="Escreva sua resposta..."></textarea>')+'</div>'}).join('')
  +'<div class="spread" style="margin-top:16px"><button type="button" class="btn ghost sm" id="cpPrev" onclick="cp(-1)" style="visibility:hidden">← Anterior</button><span class="tiny" id="cpLbl">Capítulo 1 de '+(cs.length+1)+'</span><button type="button" class="btn sm" id="cpNext" onclick="cp(1)">Próximo capítulo →</button></div>'}
 function cp(d){const ps=document.querySelectorAll('.cpage'),n=ps.length;cpi=Math.max(0,Math.min(n-1,cpi+d));
@@ -731,6 +735,54 @@ function onCodeInput(){const v=document.getElementById('f_tcode').value.trim().t
   if(document.getElementById('f_tcode').value.trim().toUpperCase()!==v)return;
   box.innerHTML=ok?'<div class="ok-note">✓ Código válido — a conta será de <b>professor</b>.</div>':'<div class="err">Código não reconhecido. Deixe em branco para criar conta de <b>aluno</b>.</div>';
   extra.style.display=ok?'block':'none';if(lbl)lbl.textContent=ok?'professor':'estudante'},350)}
+/* ===== IMAGEM NOS CAPÍTULOS + EXCLUIR CONTA ===== */
+function chapPrev(inp){inp.closest('.chap').querySelector('.c_prev').innerHTML=inp.dataset.url?'<div class="mimg-wrap"><img src="'+inp.dataset.url+'" class="mimg"></div>':''}
+function chapImg(inp){const f=inp.files[0];inp.dataset.url='';chapPrev(inp);if(!f)return;
+ if(!/^image\/(png|jpeg|webp|gif)$/.test(f.type)){inp.value='';return toast('Use PNG, JPEG, WebP ou GIF.')}
+ const rd=new FileReader();rd.onload=function(e){const data=e.target.result;
+  if(f.size<=800000){inp.dataset.url=data;chapPrev(inp);return}
+  const im=new Image();im.onload=function(){let w=im.width,h=im.height;const k=Math.min(1,1600/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+   const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);inp.dataset.url=cv.toDataURL('image/jpeg',0.92);chapPrev(inp)};
+  im.onerror=function(){toast('Não foi possível ler a imagem.')};im.src=data};
+ rd.readAsDataURL(f)}
+function openDelAcc(){const prof=me()&&me().role==='professor';
+ const o=document.createElement('div');o.className='overlay';o.id='delAcc';o.onclick=function(e){if(e.target===o)o.remove()};
+ o.innerHTML='<div class="modal"><h2>Excluir minha conta</h2><p class="muted" style="margin-top:8px">Isso apaga <b>para sempre</b> o seu login e todos os seus dados (XP, moedas, respostas, itens'+(prof?', turmas e missões, com as respostas dos alunos nelas':'')+'). Não dá para desfazer.</p>'
+  +'<label style="margin-top:14px">Para confirmar, digite <b>deleta</b></label><input id="delTxt" autocomplete="off" placeholder="deleta">'
+  +'<div class="row" style="margin-top:16px;gap:8px"><button class="btn ghost" onclick="document.getElementById(\'delAcc\').remove()">Cancelar</button><button class="btn" id="delBtn" disabled style="background:#b3261e;opacity:.5" onclick="doDelAcc()">Excluir tudo</button></div></div>';
+ document.body.appendChild(o);
+ const t=document.getElementById('delTxt'),b=document.getElementById('delBtn');
+ t.oninput=function(){const ok=t.value.trim().toLowerCase()==='deleta';b.disabled=!ok;b.style.opacity=ok?1:.5};t.focus()}
+async function doDelAcc(){const t=document.getElementById('delTxt'),b=document.getElementById('delBtn');
+ if(!t||t.value.trim().toLowerCase()!=='deleta')return;
+ b.disabled=true;b.textContent='Excluindo...';clearTimeout(saveT);saveT=null;
+ const r=await sb.rpc('delete_my_account');
+ if(r.error){b.disabled=false;b.textContent='Excluir tudo';return toast('⚠️ '+r.error.message)}
+ try{await sb.auth.signOut()}catch(e){}
+ const o=document.getElementById('delAcc');if(o)o.remove();
+ session=null;authUid=null;creds={};emptyDB();render();toast('Conta excluída. Seus dados foram apagados.')}
+/* ===== TREINO (sem XP) + SAIR DA TURMA ===== */
+function openPractice(mid){cpi=0;ui.modal={type:'answer',mid:mid,practice:true};render()}
+function practiceSubmit(mid){const m=missionById(mid);if(!m)return;const cs=m.chapters||[];
+ const items=[{type:m.type,correct:m.correct,name:'opt',ta:document.getElementById('w_ans')}].concat(cs.map(function(c,k){return{type:c.type,correct:c.correct,name:'opt'+(k+1),ta:document.querySelector('.c_ans[data-i="'+(k+1)+'"]')}}));
+ let mc=0,ok=0;
+ for(let k=0;k<items.length;k++){const it=items[k];
+  if(it.type==='multipla'){const s=document.querySelector('input[name='+it.name+']:checked');if(!s){toast('Responda o capítulo '+(k+1)+'.');return}mc++;if(+s.value===it.correct)ok++}
+  else if(!(it.ta&&it.ta.value.trim().length>=1)){toast('Escreva a resposta do capítulo '+(k+1)+'.');return}}
+ ui.modal=null;render();
+ toast(mc?(ok===mc?'🎉 Tudo certo no treino! (não vale XP)':'Você acertou '+ok+' de '+mc+' no treino. Tente de novo! (não vale XP)'):'Treino feito! (respostas escritas não valem XP)')}
+const _sub2=submitAnswer;
+submitAnswer=function(mid){if(ui.modal&&ui.modal.practice)return practiceSubmit(mid);return _sub2(mid)};
+function openLeaveClass(){const u=me(),cls=u&&classOf(u);if(!cls)return;
+ const o=document.createElement('div');o.className='overlay';o.id='leaveCls';o.onclick=function(e){if(e.target===o)o.remove()};
+ o.innerHTML='<div class="modal"><h2>Sair da turma</h2><p class="muted" style="margin-top:8px">Você vai sair de <b>'+escC(cls.name)+'</b> e deixará de ver as missões, o ranking e o diário dessa turma. Seu XP, suas moedas e seus itens continuam com você. Para voltar, será preciso entrar de novo com o código da turma.</p>'
+  +'<label style="margin-top:14px">Para confirmar, digite <b>sair</b></label><input id="lvTxt" autocomplete="off" placeholder="sair">'
+  +'<div class="row" style="margin-top:16px;gap:8px"><button class="btn ghost" onclick="document.getElementById(\'leaveCls\').remove()">Cancelar</button><button class="btn" id="lvBtn" disabled style="background:#b3261e;opacity:.5" onclick="doLeaveClass()">Sair da turma</button></div></div>';
+ document.body.appendChild(o);
+ const t=document.getElementById('lvTxt'),b=document.getElementById('lvBtn');
+ t.oninput=function(){const ok=t.value.trim().toLowerCase()==='sair';b.disabled=!ok;b.style.opacity=ok?1:.5};t.focus()}
+function doLeaveClass(){const t=document.getElementById('lvTxt'),u=me();if(!t||!u||t.value.trim().toLowerCase()!=='sair')return;
+ u.classCode=null;u.enrolledAt=null;save();const o=document.getElementById('leaveCls');if(o)o.remove();toast('Você saiu da turma.');render()}
 </script>
 </body>
 </html>
