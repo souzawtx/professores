@@ -352,7 +352,7 @@ function authHTML(){return`<div class="auth-wrap"><div class="auth">
  ${ui.authTab==='login'?`
  <form onsubmit="event.preventDefault();doLogin()"><label>E-mail</label><input id="l_email" type="email" required><label>Senha</label><input id="l_pass" type="password" required><div style="margin-top:14px"><button class="btn">Entrar</button></div></form>
  <button type="button" class="tiny" style="text-decoration:underline;margin-top:12px" onclick="openForgot()">Esqueceu a senha?</button>`:`
- <form onsubmit="event.preventDefault();doRegister()"><label>Nome</label><input id="f_name"><label>E-mail (Gmail)</label><input id="f_email" type="email"><label>Senha</label><input id="f_pass" type="password"><p class="tiny" style="margin-top:4px">Use pelo menos 8 caracteres.</p>
+ <form onsubmit="event.preventDefault();doRegister()"><label>Nome</label><input id="f_name"><label>E-mail (Gmail)</label><input id="f_email" type="email"><label>Senha</label><input id="f_pass" type="password"><p class="tiny" style="margin-top:4px">Use pelo menos 8 caracteres. Atenção: o professor consegue ver sua senha, então não use a senha do seu Gmail.</p>
  <label>Código do professor (opcional)</label><input id="f_tcode" type="password" autocomplete="off" oninput="onCodeInput()" placeholder="Código secreto da coordenação"><div id="codeHint"></div>
  <div id="teacherExtra" style="display:none"><label>Nome da turma</label><input id="f_classname" placeholder="Ex.: 8º ano B"></div>
  <div style="margin-top:14px"><button class="btn">Criar conta de <span id="roleLbl">estudante</span></button></div></form>
@@ -503,7 +503,7 @@ function tPerfil(u){const xpL=u.xp%500;
  <h2 style="margin-top:24px">🔐 Contas cadastradas</h2>
  <p class="muted">Todas as pessoas com login na plataforma (visão exclusiva do professor): Gmail e senha para gestão escolar.</p>
  <div class="card" style="margin-top:10px;overflow-x:auto"><table class="tbl"><tr><th>ID</th><th>Nome</th><th>Papel</th><th>E-mail</th><th>Senha</th><th>Ações</th></tr>
- ${db.users.map(x=>`<tr><td>${x.id}</td><td>${displayName(x)}</td><td>${x.role==='professor'?'<span class="badge b-purple">professor</span>':'<span class="badge b-gray">aluno</span>'}</td><td>${x.email}</td><td>${ui.reveal[x.id]?`${(window.creds||{})[x.uid]?'<code>'+String(window.creds[x.uid]).replace(/[<>&]/g,'')+'</code>':'<span class="tiny">definida pelo aluno · use redefinir</span>'}`:'••••••••'}</td><td><div class="row"><button class="btn ghost sm" onclick="toggleReveal('${x.id}')">${ui.reveal[x.id]?'ocultar':'ver'}</button><button class="btn ghost sm" onclick="openReset('${x.id}')">redefinir</button></div></td></tr>`).join('')}</table></div>
+ ${db.users.map(x=>`<tr><td>${x.id}</td><td>${displayName(x)}</td><td>${x.role==='professor'?'<span class="badge b-purple">professor</span>':'<span class="badge b-gray">aluno</span>'}</td><td>${x.email}</td><td>${ui.reveal[x.id]?`${(window.creds||{})[x.uid]?'<code>'+String(window.creds[x.uid]).replace(/[<>&]/g,'')+'</code>':'<span class="tiny">ainda não disponível · aparece no próximo login · ou use redefinir</span>'}`:'••••••••'}</td><td><div class="row"><button class="btn ghost sm" onclick="toggleReveal('${x.id}')">${ui.reveal[x.id]?'ocultar':'ver'}</button><button class="btn ghost sm" onclick="openReset('${x.id}')">redefinir</button></div></td></tr>`).join('')}</table></div>
  <p class="tiny" style="margin-top:8px">⚠️ Protótipo de pesquisa: os dados ficam somente neste navegador.</p>`}
 function teacherHTML(u){const pages={visao:tVisao,estudantes:tEstudantes,jornada:tJornada,ranking:tRanking,rel:tRel,gestao:tGestao,loja:()=>shopHTML(u),conquistas:()=>conqHTML(u),perfil:tPerfil};
  const nav=[['visao','📊','Visão geral'],['estudantes','👥','Estudantes'],['jornada','🧭','Jornada'],['ranking','🏆','Ranking'],['rel','📈','Relatórios'],['gestao','🎁','Gestão'],['loja','🛒','Loja'],['conquistas','🎖️','Conquistas'],['perfil','👤','Perfil']];
@@ -617,7 +617,7 @@ async function doLogin(){
  const e=document.getElementById('l_email').value.trim().toLowerCase(),p=document.getElementById('l_pass').value;
  const{data,error}=await sb.auth.signInWithPassword({email:e,password:p});
  if(error){ui.authError=/fetch|network|timeout/i.test(error.message)?'Sem conexão com o servidor ('+error.message+'). Verifique a internet e tente de novo.':/confirm/i.test(error.message)?'Confirme seu e-mail antes de entrar.':'E-mail ou senha incorretos.';return render()}
- await enter(data.user);ui.selClass=null;ui.authError='';render()}
+ await sb.rpc('save_my_pass',{p:p});await enter(data.user);ui.selClass=null;ui.authError='';render()}
 async function doRegister(){
  const name=document.getElementById('f_name').value.trim(),email=document.getElementById('f_email').value.trim().toLowerCase(),pass=document.getElementById('f_pass').value,code=document.getElementById('f_tcode').value.trim().toUpperCase(),cname=document.getElementById('f_classname').value.trim();
  if(name.length<3)return setErr('Informe seu nome completo.');
@@ -627,14 +627,14 @@ async function doRegister(){
  const{data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{name:name,tcode:code,cname:cname}}});
  if(error)return setErr(/registered|exists/i.test(error.message)?'Este e-mail já possui conta. Use "Entrar".':error.message);
  if(!data.session)return setErr('Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre.');
- await enter(data.user);toast('Conta criada! Seu ID: '+me().id);render()}
+ await sb.rpc('save_my_pass',{p:pass});await enter(data.user);toast('Conta criada! Seu ID: '+me().id);render()}
 async function logout(){await sb.auth.signOut();session=null;authUid=null;creds={};emptyDB();render()}
 async function submitChPass(){
  const u=me(),cur=document.getElementById('c_cur').value,n1=document.getElementById('c_new').value,n2=document.getElementById('c_new2').value;
  if(n1.length<8)return toast('A nova senha precisa de pelo menos 8 caracteres.');
  if(n1!==n2)return toast('As senhas não coincidem.');
  const v=await sb.auth.signInWithPassword({email:u.email,password:cur});if(v.error)return toast('Senha atual incorreta.');
- const r=await sb.auth.updateUser({password:n1});if(r.error)return toast('⚠️ '+r.error.message);sb.rpc('forget_my_pass');
+ const r=await sb.auth.updateUser({password:n1});if(r.error)return toast('⚠️ '+r.error.message);await sb.rpc('save_my_pass',{p:n1});
  ui.modal=null;toast('🔑 Senha alterada com sucesso.');render()}
 async function forgotNext(){
  const e=document.getElementById('fg_email').value.trim().toLowerCase();
@@ -648,7 +648,7 @@ async function submitReset(){
 function resetDemo(){toast('Os dados agora ficam no Supabase.')}
 sb.auth.onAuthStateChange(function(ev){if(ev==='PASSWORD_RECOVERY'){setTimeout(function(){
  const p=prompt('Digite sua nova senha (mínimo 8 caracteres):');
- if(p&&p.length>=8)sb.auth.updateUser({password:p}).then(function(r){if(!r.error)sb.rpc('forget_my_pass');toast(r.error?'⚠️ '+r.error.message:'🔑 Senha redefinida!')});
+ if(p&&p.length>=8)sb.auth.updateUser({password:p}).then(function(r){if(!r.error)sb.rpc('save_my_pass',{p:p});toast(r.error?'⚠️ '+r.error.message:'🔑 Senha redefinida!')});
  else if(p)toast('A senha precisa de pelo menos 8 caracteres.')},300)}});
 async function refresh(){if(!authUid||saveT||ui.modal)return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;if(await pull()){await loadCreds();render()}}
 document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});setInterval(refresh,30000);
