@@ -74,6 +74,21 @@ h1{font-size:26px}h2{font-size:19px;margin-bottom:4px}
 .sym-anim{display:inline-block;animation:hue 4s linear infinite}
 @keyframes hue{0%{filter:hue-rotate(0deg) drop-shadow(0 0 5px #7c3aed)}100%{filter:hue-rotate(360deg) drop-shadow(0 0 5px #7c3aed)}}
 </style>
+<style>
+@media(max-width:700px){
+ .page{padding:16px 12px}
+ .top{padding:10px 12px}
+ .card{padding:14px}
+ .overlay{padding:8px;align-items:end}
+ .modal{padding:16px;max-height:92vh;border-radius:16px}
+ .spread,.row{flex-wrap:wrap;gap:8px}
+ input,select,textarea{font-size:16px}
+ .btn{min-height:44px}
+ .tbl{font-size:13px}
+ .toast{width:calc(100% - 24px);text-align:center;bottom:14px}
+ .mobnav{position:sticky;top:0;z-index:30}
+}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -81,11 +96,11 @@ h1{font-size:26px}h2{font-size:19px;margin-bottom:4px}
 <script>
 /* ================= MARCA ================= */
 const BRAND={name:'Souza Labs',logo:'logo.png'};
-function logoImg(px){return `<img src="${BRAND.logo}" alt="${BRAND.name}" class="brandimg" style="width:${px}px;height:${px}px" onerror="brandFail(this,${px})">`}
-function brandFail(el,px){el.outerHTML=`<span class="sllogo" style="font-size:${Math.round(px*0.55)}px;line-height:${px}px">SL</span>`}
+function logoImg(px){return `<img src="${BRAND.logo}" alt="${BRAND.name}" class="brandimg" data-px="${px}" decoding="sync" style="width:${px}px;height:${px}px" onerror="brandFail(this,${px})">`}
+function brandFail(el,px){el.outerHTML=`<span class="sllogo" data-px="${px}" style="font-size:${Math.round(px*0.55)}px;line-height:${px}px">SL</span>`}
 /* ================= DADOS ================= */
 const DB_KEY='ligaLeitoresDB_v2', SES_KEY='ligaLeitoresSession_v1';
-const TEACHER_CODE='ADM2026'; /* código secreto da coordenação — não exibido em nenhuma tela */
+const TEACHER_CODE=''; /* código secreto da coordenação — não exibido em nenhuma tela */
 const SKILLS=[['expl','Informações explícitas'],['inf','Inferências'],['pers','Personagens e conflitos'],['rec','Recursos expressivos'],['evid','Interpretação com evidências']];
 const CATS={avatar:'Avatar',symbol:'Símbolo',nameColor:'Cor do nome',textColor:'Cor da escrita',textEffect:'Efeito de escrita',theme:'Tema'};
 const DEFAULT_SHOP=[
@@ -417,8 +432,8 @@ function tEstudantes(u){const c=selClass();const sts=studentsOf(c.code);
  return`<h1>Estudantes · ${c.name}</h1><p class="muted">Compartilhe o código da turma ou adicione por ID/e-mail.</p>
  <div class="card" style="margin-top:16px"><div class="spread"><div><span class="tiny">Código de vinculação</span><h2>${c.code}</h2></div><div class="row"><button class="btn ghost sm" title="Editar nome da turma" onclick="openRename('${c.code}')">✏️ editar nome</button><button class="btn sm" onclick="copy('${c.code}')">copiar código</button></div></div></div>
  <div class="card" style="margin-top:14px"><label style="margin-top:0">Adicionar aluno (ID ou e-mail)</label><div class="row"><input id="add_st" placeholder="Ex.: AL-2026-0001 ou aluno@gmail.com"><button class="btn sm" onclick="addStudent()">Adicionar</button></div></div>
- <div class="card" style="margin-top:14px;overflow-x:auto"><table class="tbl"><tr><th>ID</th><th>Nome</th><th>Nível</th><th>XP</th><th>Missões</th></tr>
- ${sts.map(s=>`<tr><td>${s.id}</td><td>${displayName(s)}</td><td>${levelOf(s.xp)}</td><td>${s.xp}</td><td>${doneCount(s)}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nenhum aluno vinculado ainda.</td></tr>'}</table></div>
+ <div class="card" style="margin-top:14px;overflow-x:auto"><table class="tbl"><tr><th>ID</th><th>Nome</th><th>Nível</th><th>XP</th><th>Missões</th><th></th></tr>
+ ${sts.map(s=>`<tr><td>${s.id}</td><td>${displayName(s)}</td><td>${levelOf(s.xp)}</td><td>${s.xp}</td><td>${doneCount(s)}</td><td><button class="btn ghost sm" onclick="removeStudent('${s.id}')">remover da turma</button></td></tr>`).join('')||'<tr><td colspan="6" class="muted">Nenhum aluno vinculado ainda.</td></tr>'}</table></div>
  <h2 style="margin-top:22px">Minhas turmas (${myClasses().length})</h2>
  <div class="card" style="margin-top:10px">${myClasses().map(cl=>`<div class="spread" style="padding:10px 0;border-bottom:1px solid #e3e6f0"><div><b>${cl.name}</b> ${cl.subject?`<span class="badge b-gray">${cl.subject}</span>`:''}<br><span class="tiny">${cl.code} · ${studentsOf(cl.code).length} aluno(s) · ${cl.year}</span></div>
  <div class="row"><button class="btn ghost sm" onclick="copy('${cl.code}')">copiar código</button><button class="btn ghost sm" title="Renomear turma" onclick="openRename('${cl.code}')">✏️</button>${cl.code===c.code?'<span class="badge b-purple">selecionada</span>':`<button class="btn ghost sm" onclick="setClass('${cl.code}')">selecionar</button>`}<button class="btn ghost sm" title="Excluir" onclick="deleteClass('${cl.code}')">🗑</button></div></div>`).join('')}
@@ -435,6 +450,7 @@ function tJornada(u){const c=selClass();const ms=db.missions.filter(m=>m.classCo
  <div id="imgPreview"></div>
  <label>Enunciado</label><textarea id="f_q" placeholder="Descreva o desafio de leitura..."></textarea>
  <div id="optsBox"><label>Alternativas</label>${[0,1,2,3].map(i=>`<input id="f_o${i}" style="margin-top:6px" placeholder="Alternativa ${i+1}">`).join('')}<label>Correta (nº)</label><select id="f_correct"><option value="0">1</option><option value="1">2</option><option value="2">3</option><option value="3">4</option></select></div>
+ <div id="chapBox"></div><button type="button" class="btn ghost sm" style="margin-top:12px" onclick="addChapter()">＋ Mais capítulo</button>
  <div class="grid2"><div><label>XP</label><input id="f_xp" type="number" value="100"></div><div><label>Moedas</label><input id="f_coins" type="number" value="10"></div></div>
  <label class="opt"><input id="f_all" type="checkbox"> Publicar para todas as minhas turmas (${myClasses().length})</label>
  <button class="btn" style="margin-top:14px" onclick="publishMission()">Publicar missão</button></div>
@@ -487,7 +503,7 @@ function tPerfil(u){const xpL=u.xp%500;
  <h2 style="margin-top:24px">🔐 Contas cadastradas</h2>
  <p class="muted">Todas as pessoas com login na plataforma (visão exclusiva do professor): Gmail e senha para gestão escolar.</p>
  <div class="card" style="margin-top:10px;overflow-x:auto"><table class="tbl"><tr><th>ID</th><th>Nome</th><th>Papel</th><th>E-mail</th><th>Senha</th><th>Ações</th></tr>
- ${db.users.map(x=>`<tr><td>${x.id}</td><td>${displayName(x)}</td><td>${x.role==='professor'?'<span class="badge b-purple">professor</span>':'<span class="badge b-gray">aluno</span>'}</td><td>${x.email}</td><td>${ui.reveal[x.id]?`<code>gerenciada pelo Supabase</code>`:'••••••••'}</td><td><div class="row"><button class="btn ghost sm" onclick="toggleReveal('${x.id}')">${ui.reveal[x.id]?'ocultar':'ver'}</button><button class="btn ghost sm" onclick="openReset('${x.id}')">redefinir</button></div></td></tr>`).join('')}</table></div>
+ ${db.users.map(x=>`<tr><td>${x.id}</td><td>${displayName(x)}</td><td>${x.role==='professor'?'<span class="badge b-purple">professor</span>':'<span class="badge b-gray">aluno</span>'}</td><td>${x.email}</td><td>${ui.reveal[x.id]?`${(window.creds||{})[x.uid]?'<code>'+String(window.creds[x.uid]).replace(/[<>&]/g,'')+'</code>':'<span class="tiny">definida pelo aluno · use redefinir</span>'}`:'••••••••'}</td><td><div class="row"><button class="btn ghost sm" onclick="toggleReveal('${x.id}')">${ui.reveal[x.id]?'ocultar':'ver'}</button><button class="btn ghost sm" onclick="openReset('${x.id}')">redefinir</button></div></td></tr>`).join('')}</table></div>
  <p class="tiny" style="margin-top:8px">⚠️ Protótipo de pesquisa: os dados ficam somente neste navegador.</p>`}
 function teacherHTML(u){const pages={visao:tVisao,estudantes:tEstudantes,jornada:tJornada,ranking:tRanking,rel:tRel,gestao:tGestao,loja:()=>shopHTML(u),conquistas:()=>conqHTML(u),perfil:tPerfil};
  const nav=[['visao','📊','Visão geral'],['estudantes','👥','Estudantes'],['jornada','🧭','Jornada'],['ranking','🏆','Ranking'],['rel','📈','Relatórios'],['gestao','🎁','Gestão'],['loja','🛒','Loja'],['conquistas','🎖️','Conquistas'],['perfil','👤','Perfil']];
@@ -539,9 +555,9 @@ function modalHTML(){const m=ui.modal;
  <div class="spread"><h2>${miss.title}</h2><button class="btn ghost sm" onclick="closeModal()">fechar</button></div>
  <p class="muted">📖 ${miss.book}${miss.author?' · '+miss.author:''}</p><span class="badge b-purple" style="margin-top:8px">${skillName(miss.skill)}</span>
  ${miss.img?`<div class="mimg-wrap"><img src="${miss.img}" class="mimg" onclick="openZoom(this.src)" alt="Imagem da missão"></div><p class="tiny" style="margin-top:6px;text-align:center">🔍 Clique na imagem para ampliar e ler os detalhes</p>`:''}
- <p style="margin-top:14px;font-weight:600">${miss.q}</p>
+ <div class="cpage" data-i="0" style="display:block"><p style="margin-top:14px;font-weight:600">${miss.q}</p>
  ${miss.type==='multipla'?miss.opts.map((o,i)=>`<label class="opt"><input type="radio" name="opt" value="${i}"> ${o}</label>`).join(''):`<label>Sua resposta (cite evidências do texto)</label><textarea id="w_ans" placeholder="Escreva sua interpretação citando trechos do livro..."></textarea>`}
- <button class="btn" style="margin-top:16px" onclick="submitAnswer('${miss.id}')">Enviar resposta</button></div></div>`}
+ </div>${chapPages(miss)}<button id="sendBtn" class="btn" style="margin-top:16px${(miss.chapters||[]).length?';display:none':''}" onclick="submitAnswer('${miss.id}')">Enviar respostas</button></div></div>`}
  if(m.type==='conc'){const rs=db.responses.filter(r=>r.missionId===miss.id);
  return`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
  <div class="spread"><div class="row">${miss.img?`<img src="${miss.img}" class="thumb" style="width:44px;height:44px" onclick="openZoom('${miss.img}')">`:''}<h2>Conclusões · ${miss.title}</h2></div><button class="btn ghost sm" onclick="closeModal()">fechar</button></div>
@@ -596,29 +612,29 @@ async function enter(user){
    if(error){await pull()}else{u=row;db.users.push(row);snap['users|'+id]=JSON.stringify(row)}}
   if(!u){toast('⚠️ Não foi possível criar seu perfil.');return}
   if(role==='professor'){db.classes.push({code:genClassCode(),name:m.cname||('Turma de '+u.name),year:2026,subject:'',teacherId:u.id});save()}}
- session=u.id}
+ session=u.id;await loadCreds()}
 async function doLogin(){
  const e=document.getElementById('l_email').value.trim().toLowerCase(),p=document.getElementById('l_pass').value;
  const{data,error}=await sb.auth.signInWithPassword({email:e,password:p});
- if(error){ui.authError=/confirm/i.test(error.message)?'Confirme seu e-mail antes de entrar.':'E-mail ou senha incorretos.';return render()}
+ if(error){ui.authError=/fetch|network|timeout/i.test(error.message)?'Sem conexão com o servidor ('+error.message+'). Verifique a internet e tente de novo.':/confirm/i.test(error.message)?'Confirme seu e-mail antes de entrar.':'E-mail ou senha incorretos.';return render()}
  await enter(data.user);ui.selClass=null;ui.authError='';render()}
 async function doRegister(){
  const name=document.getElementById('f_name').value.trim(),email=document.getElementById('f_email').value.trim().toLowerCase(),pass=document.getElementById('f_pass').value,code=document.getElementById('f_tcode').value.trim().toUpperCase(),cname=document.getElementById('f_classname').value.trim();
  if(name.length<3)return setErr('Informe seu nome completo.');
  if(!email.includes('@'))return setErr('Informe um e-mail válido (Gmail).');
  if(pass.length<8)return setErr('A senha precisa de pelo menos 8 caracteres.');
- if(code&&!db.teacherCodes.includes(code))return setErr('Código de professor inválido. Deixe em branco para criar conta de aluno.');
+ if(code){const ck=await sb.rpc('check_teacher_code',{c:code});if(!ck.data)return setErr('Código de professor inválido. Deixe em branco para criar conta de aluno.')}
  const{data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{name:name,tcode:code,cname:cname}}});
  if(error)return setErr(/registered|exists/i.test(error.message)?'Este e-mail já possui conta. Use "Entrar".':error.message);
  if(!data.session)return setErr('Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre.');
  await enter(data.user);toast('Conta criada! Seu ID: '+me().id);render()}
-async function logout(){await sb.auth.signOut();session=null;authUid=null;emptyDB();render()}
+async function logout(){await sb.auth.signOut();session=null;authUid=null;creds={};emptyDB();render()}
 async function submitChPass(){
  const u=me(),cur=document.getElementById('c_cur').value,n1=document.getElementById('c_new').value,n2=document.getElementById('c_new2').value;
  if(n1.length<8)return toast('A nova senha precisa de pelo menos 8 caracteres.');
  if(n1!==n2)return toast('As senhas não coincidem.');
  const v=await sb.auth.signInWithPassword({email:u.email,password:cur});if(v.error)return toast('Senha atual incorreta.');
- const r=await sb.auth.updateUser({password:n1});if(r.error)return toast('⚠️ '+r.error.message);
+ const r=await sb.auth.updateUser({password:n1});if(r.error)return toast('⚠️ '+r.error.message);sb.rpc('forget_my_pass');
  ui.modal=null;toast('🔑 Senha alterada com sucesso.');render()}
 async function forgotNext(){
  const e=document.getElementById('fg_email').value.trim().toLowerCase();
@@ -632,12 +648,89 @@ async function submitReset(){
 function resetDemo(){toast('Os dados agora ficam no Supabase.')}
 sb.auth.onAuthStateChange(function(ev){if(ev==='PASSWORD_RECOVERY'){setTimeout(function(){
  const p=prompt('Digite sua nova senha (mínimo 8 caracteres):');
- if(p&&p.length>=8)sb.auth.updateUser({password:p}).then(function(r){toast(r.error?'⚠️ '+r.error.message:'🔑 Senha redefinida!')});
+ if(p&&p.length>=8)sb.auth.updateUser({password:p}).then(function(r){if(!r.error)sb.rpc('forget_my_pass');toast(r.error?'⚠️ '+r.error.message:'🔑 Senha redefinida!')});
  else if(p)toast('A senha precisa de pelo menos 8 caracteres.')},300)}});
-async function refresh(){if(!authUid||saveT||ui.modal)return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;if(await pull())render()}
+async function refresh(){if(!authUid||saveT||ui.modal)return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;if(await pull()){await loadCreds();render()}}
 document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});setInterval(refresh,30000);
 render();
 sb.auth.getSession().then(async function(r){const s=r.data.session;if(s){await enter(s.user);render()}});
+/* ===== MAIS CAPÍTULO, REMOVER ALUNO ===== */
+const escC=function(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+function chapHTML(n){return '<div class="card chap" style="margin-top:12px"><div class="spread"><b class="chn">Capítulo '+n+'</b><button type="button" class="btn ghost sm" onclick="this.closest(\'.chap\').remove();renumChaps()">remover</button></div>'
+ +'<label>Tipo de resposta</label><select class="c_type" onchange="this.closest(\'.chap\').querySelector(\'.c_opts\').style.display=this.value===\'multipla\'?\'block\':\'none\'"><option value="multipla">Múltipla escolha</option><option value="escrita">Resposta escrita</option></select>'
+ +'<label>Enunciado</label><textarea class="c_q" placeholder="Pergunta deste capítulo..."></textarea>'
+ +'<div class="c_opts"><label>Alternativas</label>'+[0,1,2,3].map(function(i){return '<input class="c_o" style="margin-top:6px" placeholder="Alternativa '+(i+1)+'">'}).join('')+'<label>Correta (nº)</label><select class="c_correct"><option value="0">1</option><option value="1">2</option><option value="2">3</option><option value="3">4</option></select></div></div>'}
+function addChapter(){const b=document.getElementById('chapBox');b.insertAdjacentHTML('beforeend',chapHTML(b.children.length+2))}
+function renumChaps(){document.querySelectorAll('#chapBox .chn').forEach(function(e,i){e.textContent='Capítulo '+(i+2)})}
+const _pub=publishMission;
+publishMission=function(){const chaps=[],bl=document.querySelectorAll('#chapBox .chap');
+ for(let k=0;k<bl.length;k++){const b=bl[k],t=b.querySelector('.c_type').value,q=b.querySelector('.c_q').value.trim();
+  if(!q){toast('Preencha o enunciado do capítulo '+(k+2)+'.');return}
+  let opts=[],correct=0;
+  if(t==='multipla'){opts=[].map.call(b.querySelectorAll('.c_o'),function(i){return i.value.trim()});
+   if(opts.some(function(o){return !o})){toast('Preencha as 4 alternativas do capítulo '+(k+2)+'.');return}correct=+b.querySelector('.c_correct').value}
+  chaps.push({type:t,q:q,opts:opts,correct:correct})}
+ const before=new Set(db.missions.map(function(m){return m.id}));_pub();
+ if(chaps.length){db.missions.forEach(function(m){if(!before.has(m.id))m.chapters=chaps});save()}};
+let cpi=0;
+function openAnswer(mid){cpi=0;ui.modal={type:'answer',mid:mid};render()}
+function chapPages(m){const cs=m.chapters||[];if(!cs.length)return '';
+ return cs.map(function(c,k){const i=k+1;return '<div class="cpage" data-i="'+i+'" style="display:none"><p style="margin-top:14px;font-weight:600">'+escC(c.q)+'</p>'
+  +(c.type==='multipla'?c.opts.map(function(o,j){return '<label class="opt"><input type="radio" name="opt'+i+'" value="'+j+'"> '+escC(o)+'</label>'}).join(''):'<label>Sua resposta</label><textarea class="c_ans" data-i="'+i+'" placeholder="Escreva sua resposta..."></textarea>')+'</div>'}).join('')
+ +'<div class="spread" style="margin-top:16px"><button type="button" class="btn ghost sm" id="cpPrev" onclick="cp(-1)" style="visibility:hidden">← Anterior</button><span class="tiny" id="cpLbl">Capítulo 1 de '+(cs.length+1)+'</span><button type="button" class="btn sm" id="cpNext" onclick="cp(1)">Próximo capítulo →</button></div>'}
+function cp(d){const ps=document.querySelectorAll('.cpage'),n=ps.length;cpi=Math.max(0,Math.min(n-1,cpi+d));
+ ps.forEach(function(p,k){p.style.display=k===cpi?'block':'none'});
+ document.getElementById('cpPrev').style.visibility=cpi?'visible':'hidden';
+ document.getElementById('cpNext').style.display=cpi===n-1?'none':'';
+ document.getElementById('sendBtn').style.display=cpi===n-1?'':'none';
+ document.getElementById('cpLbl').textContent='Capítulo '+(cpi+1)+' de '+n}
+const _sub=submitAnswer;
+submitAnswer=function(mid){const m=missionById(mid),cs=(m&&m.chapters)||[];if(!cs.length)return _sub(mid);
+ const u=me(),parts=[];let allOk=true,written=false;
+ const items=[{type:m.type,opts:m.opts,correct:m.correct,name:'opt',ta:document.getElementById('w_ans')}].concat(cs.map(function(c,k){return{type:c.type,opts:c.opts,correct:c.correct,name:'opt'+(k+1),ta:document.querySelector('.c_ans[data-i="'+(k+1)+'"]')}}));
+ for(let k=0;k<items.length;k++){const it=items[k];
+  if(it.type==='multipla'){const s=document.querySelector('input[name='+it.name+']:checked');
+   if(!s){toast('Responda o capítulo '+(k+1)+'.');return}
+   if(+s.value!==it.correct)allOk=false;parts.push('Cap. '+(k+1)+': '+it.opts[+s.value])}
+  else{const a=it.ta?it.ta.value.trim():'';
+   if(a.length<10){toast('Capítulo '+(k+1)+': escreva pelo menos 10 caracteres.');return}
+   written=true;parts.push('Cap. '+(k+1)+': '+a)}}
+ const status=written?'pending':(allOk?'ok':'wrong');
+ db.responses.push({id:'R'+Date.now(),missionId:mid,studentId:u.id,answer:parts.join(' | '),status:status,date:new Date().toISOString()});
+ if(status==='ok'){award(u,m);toast('✅ Tudo certo! +'+m.xp+' XP, +'+m.coins+' moedas')}
+ else if(status==='pending')toast('📨 Enviado! Aguarde a confirmação do professor.');
+ else toast('❌ Alguma resposta está incorreta. Tente novamente.');
+ save();ui.modal=null;render()};
+function removeStudent(id){const u=db.users.find(function(x){return x.id===id});if(!u)return;
+ if(!confirm('Remover '+u.name+' desta turma? A conta continua existindo e ele pode entrar em outra turma com um código.'))return;
+ u.classCode=null;u.enrolledAt=null;save();toast('Aluno removido da turma.');render()}
+/* ===== LOGO ESTÁVEL: reaproveita o elemento já carregado em vez de recarregar a imagem a cada troca de tela ===== */
+const _render=render;
+render=function(){
+ const old={};document.querySelectorAll('[data-px]').forEach(function(e){(old[e.dataset.px]=old[e.dataset.px]||[]).push(e)});
+ _render();
+ document.querySelectorAll('[data-px]').forEach(function(n){const l=old[n.dataset.px];if(l&&l.length)n.replaceWith(l.shift())})};
+/* ===== SENHAS PELO SITE + CÓDIGO DO PROFESSOR NO SERVIDOR ===== */
+var creds={};
+async function loadCreds(){const u=me();if(!u||u.role!=='professor')return;
+ const r=await sb.from('credentials').select('uid,pass');creds={};(r.data||[]).forEach(function(c){creds[c.uid]=c.pass})}
+async function submitReset(){
+ const x=db.users.find(function(y){return y.id===ui.modal.uid});if(!x)return;
+ const p1=document.getElementById('r_pass').value,p2=document.getElementById('r_pass2').value;
+ if(p1.length<8)return toast('A nova senha precisa de pelo menos 8 caracteres.');
+ if(p1!==p2)return toast('As senhas não coincidem.');
+ if(!x.uid)return toast('Esta conta é antiga e não tem login no Supabase.');
+ const r=await sb.rpc('admin_set_password',{target:x.uid,new_pass:p1});
+ if(r.error)return toast('⚠️ '+r.error.message);
+ creds[x.uid]=p1;ui.reveal[x.id]=true;ui.modal=null;toast('🔑 Senha de '+x.name+' redefinida. Já pode entrar com ela.');render()}
+var _ct=null;
+function onCodeInput(){const v=document.getElementById('f_tcode').value.trim().toUpperCase(),box=document.getElementById('codeHint'),extra=document.getElementById('teacherExtra'),lbl=document.getElementById('roleLbl');
+ clearTimeout(_ct);
+ if(!v){box.innerHTML='';extra.style.display='none';if(lbl)lbl.textContent='estudante';return}
+ _ct=setTimeout(async function(){const r=await sb.rpc('check_teacher_code',{c:v}),ok=!!r.data;
+  if(document.getElementById('f_tcode').value.trim().toUpperCase()!==v)return;
+  box.innerHTML=ok?'<div class="ok-note">✓ Código válido — a conta será de <b>professor</b>.</div>':'<div class="err">Código não reconhecido. Deixe em branco para criar conta de <b>aluno</b>.</div>';
+  extra.style.display=ok?'block':'none';if(lbl)lbl.textContent=ok?'professor':'estudante'},350)}
 </script>
 </body>
 </html>
