@@ -619,7 +619,7 @@ async function enter(user){
 async function doLogin(){
  const e=document.getElementById('l_email').value.trim().toLowerCase(),p=document.getElementById('l_pass').value;
  const{data,error}=await sb.auth.signInWithPassword({email:e,password:p});
- if(error){ui.authError=/fetch|network|timeout/i.test(error.message)?'Sem conexão com o servidor ('+error.message+'). Verifique a internet e tente de novo.':/confirm/i.test(error.message)?'Confirme seu e-mail antes de entrar.':'E-mail ou senha incorretos.';return render()}
+ if(error){ui.authError=/fetch|network|timeout/i.test(error.message)?'Sem conexão com o servidor ('+error.message+'). Diagnóstico → '+await diagNet():/confirm/i.test(error.message)?'Confirme seu e-mail antes de entrar.':'E-mail ou senha incorretos.';return render()}
  await sb.rpc('save_my_pass',{p:p});await enter(data.user);ui.selClass=null;ui.authError='';render()}
 async function doRegister(){
  const name=document.getElementById('f_name').value.trim(),email=document.getElementById('f_email').value.trim().toLowerCase(),pass=document.getElementById('f_pass').value,code=document.getElementById('f_tcode').value.trim().toUpperCase(),cname=document.getElementById('f_classname').value.trim();
@@ -628,7 +628,7 @@ async function doRegister(){
  if(pass.length<8)return setErr('A senha precisa de pelo menos 8 caracteres.');
  if(code){const ck=await sb.rpc('check_teacher_code',{c:code});if(!ck.data)return setErr('Código de professor inválido. Deixe em branco para criar conta de aluno.')}
  const{data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{name:name,tcode:code,cname:cname}}});
- if(error)return setErr(/registered|exists/i.test(error.message)?'Este e-mail já possui conta. Use "Entrar".':error.message);
+ if(error)return setErr(/registered|exists/i.test(error.message)?'Este e-mail já possui conta. Use "Entrar".':(/fetch|network/i.test(error.message)?error.message+' — Diagnóstico → '+await diagNet():error.message));
  if(!data.session)return setErr('Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre.');
  await sb.rpc('save_my_pass',{p:pass});await enter(data.user);toast('Conta criada! Seu ID: '+me().id);render()}
 async function logout(){await sb.auth.signOut();session=null;authUid=null;creds={};emptyDB();render()}
@@ -656,7 +656,10 @@ sb.auth.onAuthStateChange(function(ev){if(ev==='PASSWORD_RECOVERY'){setTimeout(f
 async function refresh(){if(!authUid||saveT||ui.modal)return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))return;if(await pull()){await loadCreds();render()}}
 document.addEventListener('visibilitychange',function(){if(!document.hidden)refresh()});setInterval(refresh,30000);
 render();
-sb.auth.getSession().then(async function(r){const s=r.data.session;if(s){await enter(s.user);render()}});
+sb.auth.getSession().then(async function(r){const s=r.data.session;if(!s)return;
+ const g=await sb.auth.getUser();
+ if(g.error&&[401,403,404].indexOf(g.error.status)>-1){await sb.auth.signOut();render();return}
+ await enter(s.user);render()});
 /* ===== MAIS CAPÍTULO, REMOVER ALUNO ===== */
 const escC=function(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
 function chapHTML(n){return '<div class="card chap" style="margin-top:12px"><div class="spread"><b class="chn">Capítulo '+n+'</b><button type="button" class="btn ghost sm" onclick="this.closest(\'.chap\').remove();renumChaps()">remover</button></div>'
@@ -783,6 +786,12 @@ function openLeaveClass(){const u=me(),cls=u&&classOf(u);if(!cls)return;
  t.oninput=function(){const ok=t.value.trim().toLowerCase()==='sair';b.disabled=!ok;b.style.opacity=ok?1:.5};t.focus()}
 function doLeaveClass(){const t=document.getElementById('lvTxt'),u=me();if(!t||!u||t.value.trim().toLowerCase()!=='sair')return;
  u.classCode=null;u.enrolledAt=null;save();const o=document.getElementById('leaveCls');if(o)o.remove();toast('Você saiu da turma.');render()}
+/* ===== DIAGNÓSTICO DE CONEXÃO (aparece junto do erro de rede) ===== */
+async function diagNet(){const out=[];
+ async function t(label,url,opt){try{const r=await fetch(url,opt);out.push(label+': OK'+(r&&r.status?' ('+r.status+')':''))}catch(e){out.push(label+': FALHOU')}}
+ await t('Internet','https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/package.json',{mode:'no-cors',cache:'no-store'});
+ await t('Supabase',SB_URL+'/auth/v1/settings',{headers:{apikey:SB_KEY},cache:'no-store'});
+ return out.join(' · ')+' · página: '+location.protocol+'//'+(location.host||'arquivo local')}
 </script>
 </body>
 </html>
