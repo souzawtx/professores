@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="color-scheme" content="light dark"/>
+<meta name="theme-color" content="#eef0f6"/>
+<script>(function(){var t=null;try{t=localStorage.getItem('sl_theme')}catch(e){}if(!t)t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';document.documentElement.dataset.theme=t})()</script>
 <title>Souza Labs · Liga dos Leitores</title>
 <link rel="icon" type="image/png" href="logo.png">
 <style>
@@ -88,6 +91,62 @@ h1{font-size:26px}h2{font-size:19px;margin-bottom:4px}
  .toast{width:calc(100% - 24px);text-align:center;bottom:14px}
  .mobnav{position:sticky;top:0;z-index:30}
 }
+</style>
+<style>
+/* ===== AJUSTES DE CELULAR E NOTEBOOK ===== */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overflow-x:clip}
+img,video{max-width:100%}
+.shell>*,.page,.card{min-width:0}
+.auth-wrap,.shell{min-height:100vh;min-height:100dvh}
+.side{height:100vh;height:100dvh}
+.modal{max-height:86vh;max-height:86dvh}
+#themeBtn{position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:50;width:42px;height:42px;border-radius:50%;border:1px solid #d8dbe6;background:#fff;box-shadow:0 2px 10px #0002;font-size:18px;display:grid;place-items:center;cursor:pointer}
+@media(max-width:700px){
+ body{font-size:15px}
+ h1{font-size:21px}h2{font-size:17px}
+ .page{padding:14px 12px 76px}
+ .top{padding:8px 12px;gap:6px}
+ .chip{padding:6px 10px;font-size:12px}
+ .card{padding:14px;border-radius:14px}
+ .auth{padding:20px 16px}
+ .modal{padding:16px;max-height:92vh;max-height:92dvh;border-radius:16px}
+ .btn{padding:11px 14px;min-height:44px}
+ .btn.sm{min-height:38px;padding:7px 12px}
+ .opt{padding:10px}
+ .mimg{max-height:46vh;max-height:46dvh}
+ .navb{padding:10px}
+ .avatar{width:34px;height:34px}
+ .tbl{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+ .toast{bottom:calc(66px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 24px);text-align:center}
+ #themeBtn{right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));width:40px;height:40px}
+}
+/* ===== TEMA ESCURO ===== */
+html[data-theme=dark]{color-scheme:dark;--acc:#8b5cf6;--acc-soft:#2b2250}
+html[data-theme=dark] body{background:#0f1117;color:#e6e8ef}
+html[data-theme=dark] :is(input,select,textarea){background:#171a26;color:#e6e8ef;border-color:#2f3448}
+html[data-theme=dark] input[type=file]{background:#1b1f2d}
+html[data-theme=dark] label{color:#c9ccd8}
+html[data-theme=dark] :is(.card,.auth,.side,.top,.mobnav){background:#171a26;border-color:#2f3448}
+html[data-theme=dark] :is(.chip,.modal,.mimg-wrap,.btn.ghost,.tabs button.on,.opt,#themeBtn){background:#1f2333;border-color:#2f3448;color:#e6e8ef}
+html[data-theme=dark] .tabs{background:#11141d}
+html[data-theme=dark] .tabs button{color:#aab0c3}
+html[data-theme=dark] .tabs button.on{color:var(--acc)}
+html[data-theme=dark] .navb{color:#c9ccd8}
+html[data-theme=dark] .navb.on{background:var(--acc-soft);color:var(--acc)}
+html[data-theme=dark] :is(.tbl th,.tbl td,.side .foot,.thumb){border-color:#2f3448}
+html[data-theme=dark] :is(.tbl th,.muted){color:#aab0c3}
+html[data-theme=dark] .tiny{color:#8d93a8}
+html[data-theme=dark] .bar{background:#2f3448}
+html[data-theme=dark] .empty{border-color:#3a4057;color:#aab0c3}
+html[data-theme=dark] .b-green,html[data-theme=dark] .ok-note{background:#12352c;color:#5eead4}
+html[data-theme=dark] .b-amber{background:#3a2f12;color:#fbbf24}
+html[data-theme=dark] .b-gray{background:#2a2f3f;color:#aab0c3}
+html[data-theme=dark] .b-red,html[data-theme=dark] .err{background:#3d1d20;color:#fca5a5}
+html[data-theme=dark] .toast{background:#2a2f3f}
+html[data-theme=dark] :is([style*="border-top:1px solid #e3e6f0"],[style*="border-bottom:1px solid #e3e6f0"]){border-color:#2f3448!important}
+html[data-theme=dark] [style*="#fff7e0"]{background:#3a3220!important;color:#f5e6b3}
+html[data-theme=dark] [style*="color:#b3261e"]{color:#f87171!important}
 </style>
 </head>
 <body>
@@ -792,6 +851,15 @@ async function diagNet(){const out=[];
  await t('Internet','https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/package.json',{mode:'no-cors',cache:'no-store'});
  await t('Supabase',SB_URL+'/auth/v1/settings',{headers:{apikey:SB_KEY},cache:'no-store'});
  return out.join(' · ')+' · página: '+location.protocol+'//'+(location.host||'arquivo local')}
+/* ===== BOTÃO DE TEMA CLARO/ESCURO ===== */
+(function(){
+ var b=document.createElement('button');b.id='themeBtn';b.type='button';b.setAttribute('aria-label','Alternar tema claro/escuro');
+ function paint(){var d=document.documentElement.dataset.theme==='dark';b.textContent=d?'☀️':'🌙';b.title=d?'Tema claro':'Tema escuro';var m=document.querySelector('meta[name=theme-color]');if(m)m.content=d?'#0f1117':'#eef0f6'}
+ b.onclick=function(){var d=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=d;try{localStorage.setItem('sl_theme',d)}catch(e){}paint()};
+ document.body.appendChild(b);paint();
+ var mq=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)');
+ if(mq&&mq.addEventListener)mq.addEventListener('change',function(e){var s=null;try{s=localStorage.getItem('sl_theme')}catch(x){}if(!s){document.documentElement.dataset.theme=e.matches?'dark':'light';paint()}});
+})();
 </script>
 </body>
 </html>
